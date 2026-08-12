@@ -3,6 +3,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
+from app.constants import MAX_HISTORICAL_REGRESSION_SAMPLES
 from app.db import ReviewResult, ReviewRunStatus
 from app.prompts import (
     delete_prompt_txt,
@@ -407,7 +408,9 @@ def build_regression_set(
     reviews: list[SampleReview],
 ) -> tuple[list[dict], dict[int, str]]:
 
-    successful_samples = get_successful_samples()
+    successful_samples = get_successful_samples(
+        limit=MAX_HISTORICAL_REGRESSION_SAMPLES,
+    )
 
     baseline_results = {
         sample["id"]: ReviewResult.PASSED.value for sample in successful_samples

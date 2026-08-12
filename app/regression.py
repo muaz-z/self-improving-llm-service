@@ -1,13 +1,10 @@
 import asyncio
 
+from app.constants import MAX_CONCURRENT_PROCESS_CALLS
 from app.db import ReviewResult
 from app.llm import ProcessResult, process_with_prompt
 from app.repositories.evaluations import save_prompt_evaluations
 from app.reviewer import review_samples
-
-# Cap concurrent candidate reprocessing to avoid provider rate limits
-# when the historical regression set grows.
-MAX_CONCURRENT_PROCESS_CALLS = 8
 
 
 async def process_sample_with_limit(

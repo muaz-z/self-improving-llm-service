@@ -122,7 +122,9 @@ def get_samples_for_review_run(
         return [dict(row) for row in rows]
 
 
-def get_successful_samples() -> list[dict]:
+def get_successful_samples(
+    limit: int,
+) -> list[dict]:
     with get_connection() as conn:
         conn.row_factory = sqlite3.Row
 
@@ -131,9 +133,13 @@ def get_successful_samples() -> list[dict]:
             SELECT *
             FROM samples
             WHERE review_result = ?
-            ORDER BY id
+            ORDER BY RANDOM()
+            LIMIT ?
             """,
-            (ReviewResult.PASSED.value,),
+            (
+                ReviewResult.PASSED.value,
+                limit,
+            ),
         ).fetchall()
 
         return [dict(row) for row in rows]

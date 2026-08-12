@@ -133,8 +133,8 @@ The endpoint:
     against the closed `ProcessResult` schema.
 3.  Persists pass/fail results and reviewer feedback.
 4.  Generates an improved candidate prompt when failures are found.
-5.  Builds a regression set from historical successful samples plus
-    the current review batch.
+5.  Builds a regression set from up to 100 randomly sampled historical
+    passes plus the current review batch.
 6.  Reprocesses that set using the candidate prompt.
 7.  Reviews the candidate outputs and checks for regressions.
 8.  Persists the regression outcome on the candidate prompt version.
@@ -204,8 +204,12 @@ promoted candidate is used by subsequent requests.
 Before a candidate can be promoted, it is evaluated against a regression
 set built from:
 
--   historical samples that previously passed review
+-   up to 100 historical samples that previously passed review
 -   the current review batch (including failures that should improve)
+
+Historical passes are sampled with `ORDER BY RANDOM() LIMIT 100` so
+regression cost stays bounded as successful production traffic grows.
+The current review batch is always included in full.
 
 Each sample's previous result is compared with the candidate result:
 
@@ -413,8 +417,7 @@ The current implementation does not focus on:
 -   stage-level workflow checkpoints
 -   distributed/background job infrastructure
 -   a separately curated golden/held-out evaluation dataset
-    (historical successful production samples are used instead)
--   bounding/sampling of the historical regression set as it grows
+    (random sampling of historical passes is used instead)
 
 These would be useful follow-up features, but were deliberately kept out
 of the core implementation to keep the take-home focused.
@@ -425,13 +428,15 @@ For a production system with heavy usage, I would:
 
 -   run review/improvement as a background jobs
 -   use PostgreSQL instead of SQLite
--   cap or sample the historical regression set
--   add a curated held-out eval set
+-   replace random historical sampling with a curated, bounded regression
+    set (e.g. golden cases plus recent production passes)
 -   lock prompt creation and activation under concurrency
 -   add provider retries, metrics, and alerting around failed
     reviews and prompt promotions
 
-Candidate reprocessing already uses a concurrency semaphore to bound parallel LLM calls and reduce the risk of hitting provider limits.
+The take-home already bounds regression cost with `ORDER BY RANDOM()
+LIMIT 100` for historical passes and a concurrency semaphore for
+candidate reprocessing.
 
 ## TLDR
 
