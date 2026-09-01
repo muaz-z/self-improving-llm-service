@@ -1,23 +1,39 @@
-# LearnWise AI Take-Home
+# Self-Improving LLM Service
 
-A FastAPI service that processes customer-support messages into
-validated structured outputs and automatically improves its prompt using
-a stronger reviewer LLM and regression testing.
+A FastAPI service that processes customer-support messages into validated
+structured outputs and automatically improves its prompt using LLM-based
+evaluation and regression testing.
 
-## Chosen Task
+Rather than immediately deploying an AI-generated prompt, the service treats
+prompt improvement as a controlled deployment process:
 
-The `/process` endpoint classifies a customer-support message into a
-structured schema containing fields such as:
+1. Process real requests using the active prompt.
+2. Store outputs for later evaluation.
+3. Review outputs using a stronger evaluator model.
+4. Generate a candidate prompt from failed cases.
+5. Regression-test the candidate against historical successes and current failures.
+6. Promote the candidate only if it improves failing cases without breaking
+   previously successful ones.
 
--   intent
--   sentiment
--   urgency
--   entities
--   whether human intervention is needed
+This makes automated prompt improvement measurable, traceable, and safer than
+blindly replacing prompts based on individual failures.
 
-This task was chosen because the fields require enough interpretation
-that a smaller model may make mistakes, giving the prompt-improvement
-loop meaningful cases to learn from.
+## Example Task
+
+The service uses customer-support classification as its example workload.
+
+The `/process` endpoint classifies a customer-support message into a structured
+schema containing:
+
+- intent
+- sentiment
+- urgency
+- entities
+- whether human intervention is needed
+
+This workload was chosen because the fields require semantic interpretation,
+creating useful failure cases for demonstrating the automated prompt-improvement
+and regression-testing pipeline.
 
 ## Tech Stack
 
@@ -352,9 +368,8 @@ ruff format .
 
 ## Design Decisions and Trade-offs
 
-The assignment targets roughly four hours, so the implementation
-prioritizes the core improvement loop and traceability over optional
-product features.
+The implementation prioritizes the core prompt-improvement lifecycle,
+regression safety, and traceability while keeping the infrastructure lightweight.
 
 ### Must-haves
 
@@ -400,43 +415,38 @@ long-running review work into workers.
 
 ### Explicit `/review` endpoint
 
-The assignment permits either an endpoint or background processing. An
-explicit `/review` endpoint was chosen because it makes the
-self-improvement lifecycle easy to trigger, inspect, and demonstrate.
+An explicit `/review` endpoint makes the self-improvement lifecycle easy to
+trigger, inspect, and demonstrate.
 
-In production, this workflow would be a good candidate for background
-execution.
+For a production system, this workflow would be better suited to asynchronous
+background execution.
 
-## What I Intentionally Left Out
+## Current Limitations
 
-I prioritized the main requirements over the nice-to-have features.
+The current implementation intentionally keeps the infrastructure lightweight.
 
-The current implementation does not focus on:
+Potential extensions include:
 
--   a metrics dashboard
--   stage-level workflow checkpoints
--   distributed/background job infrastructure
--   a separately curated golden/held-out evaluation dataset
-    (random sampling of historical passes is used instead)
-
-These would be useful follow-up features, but were deliberately kept out
-of the core implementation to keep the take-home focused.
+- metrics and monitoring dashboard
+- stage-level workflow checkpoints
+- distributed/background job processing
+- curated golden/held-out evaluation datasets
 
 ## Production and Scaling Considerations
 
 For a production system with heavy usage, I would:
 
--   run review/improvement as a background jobs
--   use PostgreSQL instead of SQLite
--   replace random historical sampling with a curated, bounded regression
-    set (e.g. golden cases plus recent production passes)
--   lock prompt creation and activation under concurrency
--   add provider retries, metrics, and alerting around failed
-    reviews and prompt promotions
+- run review/improvement workflows as background jobs
+- use PostgreSQL instead of SQLite
+- replace random historical sampling with a curated, bounded regression set
+  combining golden cases and recent production passes
+- add locking around prompt creation and activation
+- add provider retries, metrics, and alerting around failed reviews and prompt
+  promotions
 
-The take-home already bounds regression cost with `ORDER BY RANDOM()
-LIMIT 100` for historical passes and a concurrency semaphore for
-candidate reprocessing.
+The current implementation bounds regression cost with
+`ORDER BY RANDOM() LIMIT 100` for historical passes and uses a concurrency
+semaphore for candidate reprocessing.
 
 ## TLDR
 
